@@ -2,12 +2,21 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const formData = new FormData(e.target);
+  const resultsDiv = document.getElementById("results");
+  const loadingDiv = document.getElementById("loading");
+
+  // Clear previous results and show loading
+  resultsDiv.innerHTML = "";
+  loadingDiv.style.display = "block";
 
   try {
     const response = await fetch("/upload", {
       method: "POST",
       body: formData,
     });
+
+    // Hide loading indicator
+    loadingDiv.style.display = "none";
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -16,9 +25,27 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
     const result = await response.json();
     console.log("Raw response:", result); // Debug log
 
-    // Create a container for the formatted results
-    const resultsDiv = document.getElementById("results");
-    resultsDiv.innerHTML = "";
+    // Check if we got an error response
+    if (result.error) {
+      // If it's an API quota error, show a specific message
+      if (result.error.includes("quota")) {
+        resultsDiv.innerHTML = `
+          <div class="error">
+            <h2>API Quota Exceeded</h2>
+            <p>We've reached our API usage limit. Please try again later or contact support.</p>
+          </div>
+        `;
+      } else {
+        // For other errors, show the error message
+        resultsDiv.innerHTML = `
+          <div class="error">
+            <h2>Error</h2>
+            <p>${result.error}</p>
+          </div>
+        `;
+      }
+      return;
+    }
 
     // Parse the feedback from the response
     let feedback;
@@ -28,7 +55,13 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
         feedback = JSON.parse(result.raw_content);
       } catch (e) {
         console.error("Failed to parse raw content:", e);
-        throw new Error("Failed to parse resume analysis");
+        resultsDiv.innerHTML = `
+          <div class="error">
+            <h2>Error</h2>
+            <p>Failed to parse resume analysis. Please try again.</p>
+          </div>
+        `;
+        return;
       }
     } else {
       feedback = result;
@@ -110,8 +143,15 @@ document.getElementById("uploadForm").addEventListener("submit", async (e) => {
       resultsDiv.appendChild(sectionDiv);
     }
   } catch (error) {
+    // Hide loading indicator on error
+    loadingDiv.style.display = "none";
+
     console.error("Error:", error);
-    const resultsDiv = document.getElementById("results");
-    resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+    resultsDiv.innerHTML = `
+      <div class="error">
+        <h2>Error</h2>
+        <p>An error occurred while processing your resume. Please try again later.</p>
+      </div>
+    `;
   }
 });

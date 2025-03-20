@@ -1,10 +1,18 @@
 {% extends "base.html" %} {% block content %}
 <div class="container">
   <h1>AI Resume Analyzer</h1>
+  <p class="intro-text">
+    Upload your resume for AI-powered analysis and get personalized feedback to
+    improve your chances of landing your dream job.
+  </p>
   <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="resume" required />
-    <button type="submit">Analyze</button>
+    <input type="file" name="resume" accept=".pdf" required />
+    <button type="submit">Analyze Resume</button>
   </form>
+  <div id="loading" class="loading">
+    <i class="fas fa-circle-notch"></i>
+    <p>Analyzing your resume... This might take a moment.</p>
+  </div>
   <div id="results"></div>
 </div>
 
