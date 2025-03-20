@@ -33,7 +33,7 @@ A sophisticated web application that utilizes the power of AI to analyze resumes
 - **Frontend**: HTML5, CSS3, JavaScript
 - **AI**: OpenAI GPT Models
 - **PDF Processing**: PDFMiner
-- **Deployment**: Compatible with Render, Heroku, and other platforms
+- **Deployment**: Render
 
 ## 📋 How It Works
 
