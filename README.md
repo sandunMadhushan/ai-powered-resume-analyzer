@@ -9,6 +9,14 @@ A sophisticated web application that utilizes the power of AI to analyze resumes
 
 ![image](https://github.com/user-attachments/assets/c3017e15-f496-4de1-9810-438052ed5654)
 
+<div align="center">
+
+[![Live Demo](https://img.shields.io/badge/✨_Live_Demo-Click_Here-2ea44f?style=for-the-badge)](https://ai-powered-resume-analyzer-wtej.onrender.com/)
+
+> **⚠️ Note:** The site may take up to **50 seconds** if inactive
+
+</div>
+
 ## 🚀 Features
 
 - **AI-Powered Analysis**: Leverages OpenAI's GPT models to provide human-like feedback on your resume
