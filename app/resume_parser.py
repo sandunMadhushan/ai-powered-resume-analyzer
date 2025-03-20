@@ -1,16 +1,29 @@
-import openai
+import os
 from pdfminer.high_level import extract_text
 from io import BytesIO
-import os
 from dotenv import load_dotenv
 import json
+import pkg_resources
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Get API key from environment variable
-openai.api_key = os.getenv('OPENAI_API_KEY')
-print(f"Loaded API key: {openai.api_key[:10]}...")  # Print first 10 chars for debugging
+api_key = os.getenv('OPENAI_API_KEY')
+print(f"Loaded API key: {api_key[:10]}...")  # Print first 10 chars for debugging
+
+# Check OpenAI version to use correct client
+openai_version = pkg_resources.get_distribution("openai").version
+is_new_version = int(openai_version.split('.')[0]) >= 1
+
+if is_new_version:
+    # New OpenAI client (v1.0.0+)
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key)
+else:
+    # Old OpenAI client (v0.28 or earlier)
+    import openai
+    openai.api_key = api_key
 
 def parse_resume(file):
     # Read the file content into a BytesIO object
@@ -63,19 +76,34 @@ def analyze_resume(resume_text):
         Provide specific, actionable feedback for each section. Focus on strengths and areas for improvement.
         Keep the response concise but detailed. Ensure the JSON is properly formatted and complete."""
 
-        # Get the analysis from OpenAI
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a professional resume reviewer. Provide detailed, constructive feedback in JSON format."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=2000
-        )
+        messages = [
+            {"role": "system", "content": "You are a professional resume reviewer. Provide detailed, constructive feedback in JSON format."},
+            {"role": "user", "content": prompt}
+        ]
 
-        # Extract the content from the response
-        content = response['choices'][0]['message']['content'].strip()
+        try:
+            # Use the appropriate client based on version
+            if is_new_version:
+                # New OpenAI API (v1.0.0+)
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                content = response.choices[0].message.content.strip()
+            else:
+                # Old OpenAI API (v0.28 or earlier)
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                content = response['choices'][0]['message']['content'].strip()
+        except Exception as api_error:
+            print(f"API error: {api_error}")
+            return {"error": str(api_error)}
         
         # Try to parse the content as JSON to validate it
         try:
