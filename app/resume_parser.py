@@ -3,6 +3,7 @@ from pdfminer.high_level import extract_text
 from io import BytesIO
 from dotenv import load_dotenv
 import json
+import time
 
 # Import openai at the top level to make it available throughout the module
 try:
@@ -75,6 +76,10 @@ def analyze_resume(resume_text):
     # Reference the global variables
     global is_new_version, client, openai
     
+    # Set up retry parameters
+    max_retries = 3
+    retry_delay = 2  # seconds
+    
     try:
         # Create the prompt for the analysis
         prompt = f"""Analyze this resume and provide detailed feedback in JSON format with the following structure:
@@ -122,70 +127,107 @@ def analyze_resume(resume_text):
             {"role": "user", "content": prompt}
         ]
 
-        try:
-            content = None
-            use_old_api = False
-            
-            # Attempt to use new API if available
-            if is_new_version and client is not None:
-                try:
-                    print("Attempting to use new OpenAI API...")
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=messages,
-                        temperature=0.7,
-                        max_tokens=2000
-                    )
-                    content = response.choices[0].message.content.strip()
-                    print("Successfully used new OpenAI API")
-                except Exception as new_api_error:
-                    print(f"Error with new OpenAI API: {new_api_error}")
-                    error_message = str(new_api_error)
-                    if "Rate limit" in error_message or "quota" in error_message.lower():
-                        print("Quota limit detected, trying old API as fallback...")
-                    use_old_api = True
-            else:
-                use_old_api = True
-            
-            # Try the old API if needed
-            if use_old_api:
-                try:
-                    print("Attempting to use old OpenAI API...")
-                    # Ensure openai is available
-                    if 'openai' not in globals() or openai is None:
-                        import openai
-                        openai.api_key = api_key
-                    
-                    # Call the old API
-                    response = openai.ChatCompletion.create(
-                        model="gpt-4o-mini",
-                        messages=messages,
-                        temperature=0.7,
-                        max_tokens=2000
-                    )
-                    content = response['choices'][0]['message']['content'].strip()
-                    print("Successfully used old OpenAI API")
-                except Exception as old_api_error:
-                    print(f"Error with old OpenAI API: {old_api_error}")
-                    error_message = str(old_api_error)
-                    if "Rate limit" in error_message or "quota" in error_message.lower():
-                        return {"error": "API quota exceeded. Please try again later or contact support."}
-                    else:
-                        return {"error": f"OpenAI API error: {error_message}"}
+        content = None
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                use_old_api = False
                 
-        except Exception as api_error:
-            print(f"API error: {api_error}")
-            error_message = str(api_error)
-            if "Rate limit" in error_message or "quota" in error_message.lower():
-                return {"error": "API quota exceeded. Please try again later or contact support."}
+                # Attempt to use new API if available
+                if is_new_version and client is not None:
+                    try:
+                        print(f"Attempt {attempt+1}/{max_retries}: Using new OpenAI API...")
+                        response = client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=messages,
+                            temperature=0.7,
+                            max_tokens=2000
+                        )
+                        content = response.choices[0].message.content.strip()
+                        print("Successfully used new OpenAI API")
+                        break  # Exit the retry loop if successful
+                    except Exception as new_api_error:
+                        error_message = str(new_api_error)
+                        print(f"Error with new OpenAI API: {error_message}")
+                        
+                        # If it's a rate limit or quota error, immediately try the old API
+                        if "Rate limit" in error_message or "quota" in error_message.lower():
+                            print("Quota limit detected, trying old API as fallback...")
+                            use_old_api = True
+                        # If it's a Bad Gateway, we'll retry after delay
+                        elif "502" in error_message or "Bad Gateway" in error_message:
+                            last_error = new_api_error
+                            print(f"Server error (502), retrying in {retry_delay} seconds...")
+                            time.sleep(retry_delay)
+                            continue
+                        else:
+                            use_old_api = True
+                else:
+                    use_old_api = True
+                
+                # Try the old API if needed
+                if use_old_api:
+                    try:
+                        print(f"Attempt {attempt+1}/{max_retries}: Using old OpenAI API...")
+                        # Ensure openai is available
+                        if 'openai' not in globals() or openai is None:
+                            import openai
+                            openai.api_key = api_key
+                        
+                        # Call the old API
+                        response = openai.ChatCompletion.create(
+                            model="gpt-4o-mini",
+                            messages=messages,
+                            temperature=0.7,
+                            max_tokens=2000
+                        )
+                        content = response['choices'][0]['message']['content'].strip()
+                        print("Successfully used old OpenAI API")
+                        break  # Exit the retry loop if successful
+                    except Exception as old_api_error:
+                        error_message = str(old_api_error)
+                        print(f"Error with old OpenAI API: {error_message}")
+                        
+                        # Store the error for potential use if all retries fail
+                        last_error = old_api_error
+                        
+                        # If it's a rate limit or quota error, no point in retrying
+                        if "Rate limit" in error_message or "quota" in error_message.lower():
+                            return {"error": "API quota exceeded. Please try again later or contact support."}
+                        # If it's a Bad Gateway, we'll retry after delay
+                        elif "502" in error_message or "Bad Gateway" in error_message:
+                            print(f"Server error (502), retrying in {retry_delay} seconds...")
+                            time.sleep(retry_delay)
+                            continue
+                        # For other errors, wait and retry
+                        else:
+                            if attempt < max_retries - 1:  # If not the last attempt
+                                print(f"Retrying in {retry_delay} seconds...")
+                                time.sleep(retry_delay)
+                            else:
+                                return {"error": f"OpenAI API error: {error_message}"}
+            
+            except Exception as loop_error:
+                print(f"Unexpected error in retry loop: {loop_error}")
+                last_error = loop_error
+                if attempt < max_retries - 1:  # If not the last attempt
+                    print(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+        
+        # If we've exhausted all retries and still have no content
+        if content is None:
+            if last_error:
+                error_message = str(last_error)
+                if "502" in error_message or "Bad Gateway" in error_message:
+                    return {"error": "OpenAI servers are currently unavailable. Please try again later."}
+                else:
+                    return {"error": f"API request failed after {max_retries} attempts: {error_message}"}
             else:
-                return {"error": f"OpenAI API error: {error_message}"}
+                return {"error": "Failed to get content from OpenAI API after multiple attempts"}
         
         # Try to parse the content as JSON to validate it
         try:
-            if content is None:
-                return {"error": "Failed to get content from OpenAI API"}
-                
             feedback = json.loads(content)
             return feedback
         except json.JSONDecodeError as e:
