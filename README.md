@@ -7,7 +7,7 @@
 
 A sophisticated web application that utilizes the power of AI to analyze resumes and provide detailed, constructive feedback to help job seekers enhance their CVs and increase their chances of landing interviews.
 
-![Resume Analyzer Screenshot](https://via.placeholder.com/800x450?text=AI+Resume+Analyzer)
+![image](https://github.com/user-attachments/assets/c3017e15-f496-4de1-9810-438052ed5654)
 
 ## 🚀 Features
 
@@ -55,7 +55,6 @@ python -m venv venv
 
 # For Windows:
 venv\Scripts\activate
-
 # For macOS/Linux:
 source venv/bin/activate
 
@@ -119,7 +118,7 @@ ai-powered-resume-analyzer/
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ## 🙌 Contributing
 
@@ -137,4 +136,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-Made with ❤️ by [Sandun Madhushan](sandun.is-a.dev)
+Made with ❤️ by [Sandun Madhushan](https://sandun.is-a.dev/)
