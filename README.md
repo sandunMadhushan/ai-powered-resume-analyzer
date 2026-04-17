@@ -13,7 +13,7 @@ A sophisticated web application that utilizes advanced AI to analyze resumes and
 
 <div align="center">
 
-[![Live Demo](https://img.shields.io/badge/✨_Live_Demo-Click_Here-2ea44f?style=for-the-badge)](https://ai-powered-resume-analyzer-wtej.onrender.com/)
+[![Live Demo](https://img.shields.io/badge/✨_Live_Demo-Click_Here-2ea44f?style=for-the-badge)](https://resume.madhushan.me/)
 
 > **⚠️ Note:** The site may take up to **50 seconds** if inactive
 
